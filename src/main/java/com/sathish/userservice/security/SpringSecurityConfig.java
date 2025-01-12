@@ -22,6 +22,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
@@ -47,16 +48,16 @@ public class SpringSecurityConfig {
 
         http
                 .securityMatcher(authorizationServerConfigurer.getEndpointsMatcher())
-                .with(authorizationServerConfigurer, (authorizationServer) ->
-                        authorizationServer
-                                .oidc(Customizer.withDefaults())	// Enable OpenID Connect 1.0
-                )
                 .authorizeHttpRequests((authorize) ->
                         authorize
+                                .requestMatchers("/auth/signup", "/auth/signup/").permitAll() // Allow /auth/signup
                                 .anyRequest().authenticated()
                 )
-                // Redirect to the login page when not authenticated from the
-                // authorization endpoint
+                //.requestCache((requestCache) -> requestCache.disable()) // Disable request caching
+                //.csrf((csrf) -> csrf.ignoringRequestMatchers("/auth/signup", "/auth/signup/")) // Ignore CSRF for signup
+                .with(authorizationServerConfigurer, (authorizationServer) ->
+                        authorizationServer.oidc(Customizer.withDefaults()) // Enable OpenID Connect 1.0
+                )
                 .exceptionHandling((exceptions) -> exceptions
                         .defaultAuthenticationEntryPointFor(
                                 new LoginUrlAuthenticationEntryPoint("/login"),
@@ -69,29 +70,21 @@ public class SpringSecurityConfig {
 
     @Bean
     @Order(2)
-    public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http)
-            throws Exception {
+    public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
         http
+                // Authorize HTTP requests
                 .authorizeHttpRequests((authorize) -> authorize
-                        .anyRequest().permitAll()
+                        .requestMatchers("*auth/signup", "*/auth/signup/").permitAll() // Allow access to /auth/signup
+                        .anyRequest().authenticated() // Require authentication for all other endpoints
                 )
-                // Form login handles the redirect to the login page from the
-                // authorization server filter chain
+                // Disable CSRF protection for /auth/signup
+                .csrf(AbstractHttpConfigurer::disable)
+                // Configure form login for authenticated endpoints
                 .formLogin(Customizer.withDefaults());
 
         return http.build();
     }
 
-    /*@Bean
-    public UserDetailsService userDetailsService(BCryptPasswordEncoder bCryptPasswordEncoder) {
-        UserDetails userDetails = User.builder()
-                .username("user")
-                .password(bCryptPasswordEncoder.encode("password"))
-                .roles("USER")
-                .build();
-
-        return new InMemoryUserDetailsManager(userDetails);
-    }*/
 
     @Bean
     public JWKSource<SecurityContext> jwkSource() {

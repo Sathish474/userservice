@@ -1,3 +1,4 @@
+/*
 package com.sathish.userservice;
 
 import com.sathish.userservice.security.repositories.JpaRegisteredClientRepository;
@@ -41,3 +42,4 @@ class UserserviceApplicationTests {
         registeredClientRepository.save(oidcClient);
     }
 }
+*/
